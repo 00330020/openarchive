@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>open archive</title>
+  <style>
+    body { font-family: sans-serif; max-width: 700px; margin: 2rem auto; padding: 0 1rem; background: #f5f5f5; }
+    h1 { font-size: 1.8rem; }
+    .save-form { display: flex; gap: 0.5rem; margin: 1.5rem 0; }
+    .save-form input { flex: 1; padding: 0.6rem; border: 1px solid #ccc; border-radius: 4px; font-size: 1rem; }
+    .save-form button { padding: 0.6rem 1.2rem; background: #2563eb; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 1rem; }
+    #status { margin: 0.5rem 0; font-size: 0.9rem; color: #555; }
+    .archive-list { list-style: none; padding: 0; margin-top: 1.5rem; }
+    .archive-list li { background: white; border: 1px solid #ddd; border-radius: 6px; padding: 0.9rem 1rem; margin-bottom: 0.6rem; }
+    .archive-list li a { font-weight: bold; color: #1d4ed8; text-decoration: none; }
+    .meta { font-size: 0.8rem; color: #888; margin-top: 0.3rem; }
+  </style>
+</head>
+<body>
+  <h1>open archive</h1>
+  <div id="stats" style="font-size:0.85rem;color:#666;margin-bottom:1rem;"></div>
+  <div class="save-form">
+    <input id="urlInput" type="url" placeholder="https://example.com" />
+    <button onclick="savePage()">Save</button>
+  </div>
+  <div id="status"></div>
+  <h2>archived websites by community</h2>
+  <ul id="archiveList" class="archive-list"></ul>
+  <script>
+    const WORKER_URL = "https://archive.gwishyman.workers.dev";
+  
+  async function loadStats() {
+  try {
+    const res = await fetch(WORKER_URL + "/stats");
+    const { totalPages, usedEstimateKB } = await res.json();
+    const usedMB = (usedEstimateKB / 1024).toFixed(1);
+    const freeMB = (1024 - usedEstimateKB / 1024).toFixed(1);
+    document.getElementById("stats").textContent =
+      `${totalPages} pages · ~${usedMB} MB used · ~${freeMB} MB free (of 1024 MB)`;
+  } catch (e) {}
+}
+
+    async function loadList() {
+      const list = document.getElementById("archiveList");
+      list.innerHTML = "<li>loading...</li>";
+      try {
+        const res = await fetch(WORKER_URL + "/list");
+        const pages = await res.json();
+        if (!pages.length) { list.innerHTML = "<li>you've been rate limited</li>"; return; }
+        list.innerHTML = pages.map(p => `
+          <li>
+            <a href="viewer.html?id=${p.id}">${esc(p.title)}</a>
+            <div class="meta">${esc(p.url)} · ${new Date(p.timestamp).toLocaleString()}</div>
+          </li>
+        `).join("");
+      } catch (e) {
+        list.innerHTML = "<li>try again</li>";
+      }
+    }
+
+    async function savePage() {
+      const input = document.getElementById("urlInput");
+      const status = document.getElementById("status");
+      const url = input.value.trim();
+      if (!url) { status.textContent = "enter a url"; return; }
+      status.textContent = "saving";
+      try {
+        const res = await fetch(WORKER_URL + "/save", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ url })
+        });
+        const data = await res.json();
+        if (data.success) {
+          status.textContent = "saved " + data.title;
+          input.value = "";
+          loadList();
+        } else {
+          status.textContent = (data.error || "i dont fucking know mate");
+        }
+      } catch (e) {
+        status.textContent = "uh oh.";
+      }
+    }
+
+    function esc(str) {
+      return String(str).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+    }
+
+    loadList();
+  </script>
+</body>
+</html>
