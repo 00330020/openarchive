@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>open archive viewer</title>
+  <style>
+    body { margin: 0; background: #222; }
+    .toolbar { background: #111; color: white; padding: 0.6rem 1rem; display: flex; gap: 1rem; align-items: center; position: sticky; top: 0; }
+    .toolbar a { color: #60a5fa; font-size: 0.9rem; }
+    iframe { width: 100%; height: calc(100vh - 44px); border: none; display: block; background: white; }
+  </style>
+</head>
+<body>
+  <div class="toolbar">
+    <a href="index.html">back</a>
+    <span id="info" style="font-size:0.85rem;color:#aaa">loading</span>
+  </div>
+  <iframe id="frame"></iframe>
+
+  <script>
+    const WORKER_URL = "https://archive.gwishyman.workers.dev";
+    const id = new URLSearchParams(location.search).get("id");
+    if (id) {
+      document.getElementById("frame").src = WORKER_URL + "/snapshot/" + id;
+      document.getElementById("info").textContent = "snapshot " + id;
+    } else {
+      document.getElementById("info").textContent = "go back it fucking broke";
+    }
+  </script>
+</body>
+</html>
